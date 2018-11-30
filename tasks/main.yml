@@ -5,3 +5,7 @@
 - name: Install python-mysqldb (required for ansible mysql_* modules)
   apt: pkg=python-mysqldb state=present
   tags: sql
+
+- import_tasks: root-password.yml
+  when: mariadb_root_password is defined
+  tags: sql
