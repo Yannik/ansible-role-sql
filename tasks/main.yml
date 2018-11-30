@@ -1,0 +1,7 @@
+- name: Install mysql-server
+  apt: pkg=mysql-server state=present
+  tags: sql
+
+- name: Install python-mysqldb (required for ansible mysql_* modules)
+  apt: pkg=python-mysqldb state=present
+  tags: sql
