@@ -1,0 +1,24 @@
+- name: Install mysql-server
+  apt: pkg=mysql-server state=present
+  register: sql_install_result
+
+- name: Install python-mysqldb (required for ansible mysql_* modules)
+  apt: pkg=python-mysqldb state=present
+
+- name: Set MariaDB root password for the first time (root@localhost)
+  mysql_user:
+    name: root
+    password: "{{ mariadb_root_password }}"
+    host: localhost
+  notify: Flush privileges
+
+- name: Change default sql authentication plugin for root user from unix_socket to normal password auth
+  shell: >
+    mysql -u root -D mysql -NBe
+    'UPDATE user SET plugin="" WHERE User="root" AND plugin = "unix_socket" OR plugin = "auth_socket";'
+  when: sql_install_result is changed
+  notify: Flush privileges
+
+- name: copy .my.cnf file with root password credentials
+  template: src="my.cnf.j2" dest="/root/.my.cnf" owner=root group=root mode=0600
+

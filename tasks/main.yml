@@ -1,16 +1,3 @@
-# without this, auth_socket will be used for root@localhost, and we won't be able to set the password
-- name: Specify MySQL root password before installing
-  debconf: name='mysql-server' question='mysql-server/root_password' value='{{mariadb_root_password | quote}}' vtype='password'
-
-- name: Confirm MySQL root password before installing
-  debconf: name='mysql-server' question='mysql-server/root_password_again' value='{{mariadb_root_password | quote}}' vtype='password'
-  tags: sql
-
-- name: Install mysql-server
-  apt: pkg=mysql-server state=present
-  tags: sql
-
-- name: Install python-mysqldb (required for ansible mysql_* modules)
-  apt: pkg=python-mysqldb state=present
-  tags: sql
+ - import_tasks: sql.yml
+   tags: sql
 
