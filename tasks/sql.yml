@@ -22,3 +22,9 @@
 - name: copy .my.cnf file with root password credentials
   template: src="my.cnf.j2" dest="/root/.my.cnf" owner=root group=root mode=0600
 
+- name: Fix /etc/mysql/debian.cnf which is used by /etc/logrotate.d/mysql-server
+  replace:
+    path: /etc/mysql/debian.cnf
+    regexp: '^password =.*'
+    replace: "password = {{ mariadb_root_password }}"
+
