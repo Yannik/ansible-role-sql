@@ -3,3 +3,5 @@
     mysql -u root -NBe
     'FLUSH PRIVILEGES;'
 
+- name: Restart mariadb
+  service: name=mariadb state=restarted

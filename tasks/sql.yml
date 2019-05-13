@@ -10,23 +10,27 @@
     name: root
     password: "{{ mariadb_root_password }}"
     host: localhost
+  when: mariadb_root_password is defined
+  register: mariadb_password_changed
   notify: Flush privileges
 
 - name: Change default sql authentication plugin for root user from unix_socket to normal password auth
   shell: >
     mysql -u root -D mysql -NBe
     'UPDATE user SET plugin="" WHERE User="root" AND plugin = "unix_socket" OR plugin = "auth_socket";'
-  when: sql_install_result is changed
+  when: mariadb_password_changed is changed
   notify: Flush privileges
 
 - name: copy .my.cnf file with root password credentials
   template: src="my.cnf.j2" dest="/root/.my.cnf" owner=root group=root mode=0600
+  when: mariadb_root_password is defined
 
 - name: Fix /etc/mysql/debian.cnf which is used by /etc/logrotate.d/mysql-server
   replace:
     path: /etc/mysql/debian.cnf
     regexp: '^password =.*'
     replace: "password = {{ mariadb_root_password }}"
+  when: mariadb_root_password is defined
 
 - name: Use innodb barracuda file format by default
   copy:
