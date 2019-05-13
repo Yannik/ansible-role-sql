@@ -28,3 +28,8 @@
     regexp: '^password =.*'
     replace: "password = {{ mariadb_root_password }}"
 
+- name: Use innodb barracuda file format by default
+  copy:
+    src: use-barracuda.cnf
+    dest: /etc/mysql/conf.d/
+  notify: Restart mariadb
