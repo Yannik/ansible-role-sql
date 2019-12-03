@@ -12,11 +12,10 @@
     host: localhost
   when: mariadb_root_password is defined
   register: mariadb_password_changed
-  notify: Flush privileges
 
 - name: Change default sql authentication plugin for root user from unix_socket to normal password auth
   shell: >
-    mysql -u root -D mysql -NBe
+    mysql -u root "-p{{ mariadb_root_password }}" -D mysql -NBe
     'UPDATE user SET plugin="" WHERE User="root" AND plugin = "unix_socket" OR plugin = "auth_socket";'
   when: mariadb_password_changed is changed
   notify: Flush privileges
