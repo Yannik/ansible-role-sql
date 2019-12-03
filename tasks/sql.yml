@@ -1,5 +1,5 @@
 - name: Install mysql-server
-  apt: pkg=mysql-server state=present
+  apt: pkg=default-mysql-server state=present
   register: sql_install_result
 
 - name: Install python-mysqldb (required for ansible mysql_* modules)
