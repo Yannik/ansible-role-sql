@@ -4,11 +4,11 @@
 
 - name: Install python-mysqldb (required for ansible mysql_* modules)
   apt: pkg=python-mysqldb state=present
-  when: not (ansible_distribution == "Debian" and ansible_distribution_major_version|int > 10)
+  when: ansible_python.version.major == 2
 
 - name: Install python-pymsql (required for ansible mysql_* modules)
   apt: pkg=python3-pymysql state=present
-  when: ansible_distribution == "Debian" and ansible_distribution_major_version|int > 10
+  when: ansible_python.version.major == 3
 
 - name: Set MariaDB root password for the first time (root@localhost)
   mysql_user:
