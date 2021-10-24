@@ -31,11 +31,15 @@
   template: src="my.cnf.j2" dest="/root/.my.cnf" owner=root group=root mode=0600
   when: mariadb_root_password is defined
 
-- name: Fix /etc/mysql/debian.cnf which is used by /etc/logrotate.d/mysql-server
-  replace:
+- name: Fix /etc/mysql/debian.cnf which is used by /etc/logrotate.d/mysql-server and /etc/mysql/debian-start (run during debian startup)
+  ini_file:
     path: /etc/mysql/debian.cnf
-    regexp: '^password =.*'
-    replace: "password = {{ mariadb_root_password }}"
+    section: "{{ item }}"
+    option: password
+    value: "{{ mariadb_root_password }}"
+  loop:
+    - client
+    - mysql_upgrade
   when: mariadb_root_password is defined
 
 - name: Use innodb barracuda file format by default
