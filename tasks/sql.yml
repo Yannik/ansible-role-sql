@@ -10,33 +10,59 @@
   apt: pkg=python3-pymysql state=present
   when: ansible_python.version.major == 3
 
-- name: Set MariaDB root password for the first time (root@localhost)
-  mysql_user:
-    name: root
-    password: "{{ mariadb_root_password }}"
-    login_unix_socket: /var/run/mysqld/mysqld.sock
+# https://github.com/ansible-collections/community.mysql/issues/241
+#- name: Set MariaDB root password
+#  community.mysql.mysql_user:
+#    name: root
+#    password: "{{ mariadb_root_password }}"
+#    login_unix_socket: /var/run/mysqld/mysqld.sock
+#  when: mariadb_root_password is defined
+#  register: mariadb_password_changed
+
+# not using this as we need to manually enable unix_socket on hosts initially installed with mariaDB < 10.4
+#- name: Set MariaDB root password
+#  shell: >
+#    mysql -u root -D mysql -NBe "SET PASSWORD = PASSWORD('{{ mariadb_root_password }}');"
+#  when: mariadb_root_password is defined
+#  register: mariadb_password_changed
+
+# always reports changed (same with community.mysql.mysql_query module)
+- name: Set MariaDB root password
+  shell: >
+    mysql -u root -D mysql -NBe
+    "ALTER USER root@localhost identified via unix_socket or mysql_native_password USING PASSWORD('{{ mariadb_root_password }}');"
   when: mariadb_root_password is defined
   register: mariadb_password_changed
 
-- name: Change default sql authentication plugin for root user from unix_socket to normal password auth
-  shell: >
-    mysql -u root "-p{{ mariadb_root_password }}" -D mysql -NBe
-    'UPDATE user SET plugin="" WHERE User="root" AND plugin = "unix_socket" OR plugin = "auth_socket";'
-  when: mariadb_password_changed is changed
-        and not (ansible_distribution == "Debian" and ansible_distribution_major_version|int > 10) # https://stackoverflow.com/questions/64841185/error-1356-hy000-view-mysql-user-references-invalid-tables-or-columns-o
-  # default plugin is mysql_native_password on debian 11 anyway
-  notify: Flush privileges
+- block:
+  - name: Change default sql authentication plugin for root user from unix_socket to normal password auth (prior to Debian 11)
+    shell: >
+      mysql -u root "-p{{ mariadb_root_password }}" -D mysql -NBe
+      'UPDATE user SET plugin="" WHERE User="root" AND plugin = "unix_socket" OR plugin = "auth_socket";'
+    when: mariadb_password_changed is changed
+    notify: Flush privileges
+  
+  - name: copy .my.cnf file with root password credentials
+    template: src="my.cnf.j2" dest="/root/.my.cnf" owner=root group=root mode=0600
+  
+  - name: Fix /etc/mysql/debian.cnf which is used by /etc/logrotate.d/mysql-server and /etc/mysql/debian-start (run during debian startup)
+    replace:
+      path: /etc/mysql/debian.cnf
+      regexp: '^password =.*'
+      replace: "password = {{ mariadb_root_password }}"
+    when: mariadb_root_password is defined
+  when: not (ansible_distribution == "Debian" and ansible_distribution_major_version|int > 10) # on Mariadb >= 10.4 (debian 11), both unix socket auth and password auth can be used simultaneously (https://mariadb.com/kb/en/authentication-from-mariadb-104/)
 
-- name: copy .my.cnf file with root password credentials
-  template: src="my.cnf.j2" dest="/root/.my.cnf" owner=root group=root mode=0600
-  when: mariadb_root_password is defined
-
-- name: Fix /etc/mysql/debian.cnf which is used by /etc/logrotate.d/mysql-server
-  replace:
-    path: /etc/mysql/debian.cnf
-    regexp: '^password =.*'
-    replace: "password = {{ mariadb_root_password }}"
-  when: mariadb_root_password is defined
+- name: Remove password from /root/.my.cnf and /etc/mysql/debian.cnf
+  ini_file:
+    path: "{{ item.0 }}"
+    section: "{{ item.1 }}"
+    option: password
+    state: absent
+  with_nested:
+    - ['/root/.my.cnf', '/etc/mysql/debian.cnf']
+    - ['client', 'mysql_upgrade']
+  when: ansible_distribution == "Debian" and ansible_distribution_major_version|int > 10 # on Mariadb >= 10.4 (debian 11), both unix socket auth and password auth can be used simultaneously (https://mariadb.com/kb/en/authentication-from-mariadb-104/)
 
 - name: Use innodb barracuda file format by default
   copy:
