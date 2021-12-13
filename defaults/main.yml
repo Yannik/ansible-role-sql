@@ -1,0 +1,1 @@
+mysql_max_allowed_packet: "64M"

@@ -69,3 +69,9 @@
     src: use-barracuda.cnf
     dest: /etc/mysql/conf.d/
   notify: Restart mariadb
+
+- name: Set max_allowed_packet configuration option
+  template:
+    src: max-allowed-packet.cnf
+    dest: /etc/mysql/conf.d/
+  notify: Restart mariadb
